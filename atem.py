@@ -1,15 +1,21 @@
-#License: http://www.gnu.org/licenses/agpl.html
-#(c) Frederik M.J. Vestre (ved/for Studentersamfundet i Trondheim)
+# ATEMController Python Project - Controller Class
+# Copyright (C) 2012
+#    Frederik M.J. Vestre (ved/for Studentersamfundet i Trondheim)
 #    Daniel Fairhead (OMNIvision) (reorganising/refactoring)
-#    Based on perl code/reverse engineering by Michael Potter, 
-#          and reverse engineering with wireshark
-#          Blackmagic ATEM switch control
-#Works with Blackmagic ATEM television studio - standard config
-#Midi requires pyportmidi
-
-#Reverse engineering info:
-# http://atemuser.com/forums/atem-vision-mixers/blackmagic-atems/controlling-atem
-#http://sig11.de/~ratte/misc/atem/
+#    Based on perl code/reverse engineering by Michael Potter.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from struct import pack, unpack
 from binascii import hexlify, unhexlify
@@ -19,7 +25,7 @@ import fcntl
 import sys
 import os
 from time import sleep
-    
+
 def rand(max):
     return int(rand_uniform(0,max))
 
@@ -53,7 +59,7 @@ class ATEMController(object):
 
         self.sock.send(hello)
         return self.uid
-        
+
     def send_pkt(self, cmd, cout, un1, un2, cin, payload):
         ln = 12 + len(payload)
         cmd += ((ln >> 8) & 0x07)
@@ -78,7 +84,7 @@ class ATEMController(object):
                len, "Uid:",
                hex(self.uid), "Unkn1:",
                unknown1, "Unkn2:",
-               unknown2, "Cnti:", 
+               unknown2, "Cnti:",
                hex(self.count_in), "Payload:",
                hexlify(payload))
 
@@ -102,7 +108,7 @@ class ATEMController(object):
             # hello response
             #undef, new_self.uid, undef, undef = unpack("!HHHH", payload)
             #self.uid = unpack("!HHHH", payload)[1]
-            print "Helloresp", self.uid, cmd, cmd&0x10
+            print "Helloresp", self.uid, cmd, cmd & 0x10
             #send_pkt(0x80, self.uid, 0x0, 0, 0x00e9, 0, '')
             self.send_pkt(0x80, 0, 0, 0x0050, 0, '')
             return True
@@ -131,24 +137,24 @@ class ATEMController(object):
 
     def fade(self, amount): #amount 1-1000
         payload = pack("!HHHHHH", 0x000c, 0x0000,0x4354, 0x5073, 0x0054, amount)#value from 0-1000
-        self.send_pkt(0x88, self.count_in, 0, 0, self.mycount, payload) 
+        self.send_pkt(0x88, self.count_in, 0, 0, self.mycount, payload)
         print "SENDFADE"
 
     def top(self, channel):
         payload = unhexlify("000c00004350674900")+chr(channel)+unhexlify("0000")
-        self.send_pkt(0x08, self.count_in, 0, 0, self.mycount, payload) 
+        self.send_pkt(0x08, self.count_in, 0, 0, self.mycount, payload)
         print "SENDTPKG"
 
     def bottom(self, channel):
         payload = unhexlify("000c00004350764900")+chr(channel)+unhexlify("0000")
         #payload = unhexlify("000c00004350764900060000")
-        self.send_pkt(0x08, self.count_in, 0, 0, self.mycount, payload) 
+        self.send_pkt(0x08, self.count_in, 0, 0, self.mycount, payload)
         print "SENDBPKG"
 
     def other_bottom(self):
         payload = unhexlify("000c97024441757400000000")
         #payload = unhexlify("000c00004350764900060000")
-        atem.send_pkt(0x08, self.count_in, 0, 0, self.mycount, payload) 
+        atem.send_pkt(0x08, self.count_in, 0, 0, self.mycount, payload)
         print "SENDATPKG"
 
     def close(self):

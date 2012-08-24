@@ -1,15 +1,22 @@
-#License: http://www.gnu.org/licenses/agpl.html
-#(c) Frederik M.J. Vestre (ved/for Studentersamfundet i Trondheim)
+# ATEMController Python Project - main basic interface
+# Copyright (C) 2012
+#    Frederik M.J. Vestre (ved/for Studentersamfundet i Trondheim)
 #    Daniel Fairhead (OMNIvision) (reorganising/refactoring)
-#    Based on perl code/reverse engineering by Michael Potter, 
-#          and reverse engineering with wireshark
-#          Blackmagic ATEM switch control
-#Works with Blackmagic ATEM television studio - standard config
-#Midi requires pyportmidi
+#    Based on perl code/reverse engineering by Michael Potter.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#Reverse engineering info:
-# http://atemuser.com/forums/atem-vision-mixers/blackmagic-atems/controlling-atem
-#http://sig11.de/~ratte/misc/atem/
 
 from struct import pack, unpack
 from binascii import hexlify, unhexlify
@@ -20,23 +27,30 @@ import sys
 import os
 from time import sleep
 from atem import ATEMController
+from config import *
 has_midi = False
+
 try:
     import pypm
     has_midi = True
 except:
     pass
-    
-HOST = '192.168.10.240'    # The remote host
-PORT = 9910              # The same port as used by the server
 
-# Keyboard control:
-#   TODO: put this in a separate class/module???
+
+##############
+#
+# Keyboard controls:
+#
+##############
+
+# Functions we want to put on the keyboard
 
 FADE = ATEMController.fade
 TOP = ATEMController.top
 BTM = ATEMController.bottom
 OTHER = ATEMController.other_bottom
+
+# Keys, functions, arguments:
 
 keymap = {
     '1':(FADE,0),
@@ -67,7 +81,7 @@ keymap = {
     'm':(BTM,6)
 }
 
-
+# Midi stuff.
 
 midiin = None
 if has_midi:
@@ -82,10 +96,16 @@ fl = fcntl.fcntl(fd, fcntl.F_GETFL)
 fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
 
 atem = ATEMController(HOST,PORT)
-    
+
+#################
+#
+# Main loop:
+#
+#################
+
 while True:
     if midiin:
-        midi_msg = midiin.Read(1) 
+        midi_msg = midiin.Read(1)
         if midi_msg:
             data, counter = midi_msg[0]
             bank, instrument, value, val2 = data
@@ -111,7 +131,7 @@ while True:
                 #bottom pressed
                 atem.other_bottom()
             continue
-    atem.step()        
+    atem.step()
 
     #Read from command line
 
@@ -129,6 +149,6 @@ while True:
         #print line
         # 88 18 801c 01e1 0000 0000 01f7 - 000c 0000 4354 5073 0054 01f1 (Example pkg)
         #payload = pack("!HHHHHH", 0x000c, 0x0000,0x4354, 0x5073, 0x0054, int(line))#value from 0-1000
-        #atem.send_pkt(0x88, self.count_in, 0, 0, self.mycount, payload) 
+        #atem.send_pkt(0x88, self.count_in, 0, 0, self.mycount, payload)
 
 atem.close()

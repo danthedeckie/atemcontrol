@@ -2,6 +2,14 @@
 
 So far, merely refactoring the great work started by others.
 
+Works with Blackmagic ATEM television studio - standard config
+Midi requires pyportmidi
+
+##Reverse engineering info:
+
+http://atemuser.com/forums/atem-vision-mixers/blackmagic-atems/controlling-atem
+http://sig11.de/~ratte/misc/atem/
+
 ## Roadmap:
 
 1. Continue clean up
