@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # ATEMController Python Project - main basic interface
 # Copyright (C) 2012
 #    Frederik M.J. Vestre (ved/for Studentersamfundet i Trondheim)
@@ -17,7 +18,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
 from struct import pack, unpack
 from binascii import hexlify, unhexlify
 import socket
@@ -26,6 +26,7 @@ import fcntl
 import sys
 import os
 from time import sleep
+import logging
 from atem import ATEMController
 from config import *
 has_midi = False
@@ -85,10 +86,10 @@ keymap = {
 
 midiin = None
 if has_midi:
-    print "Pre midi init"
+    logging.info("Pre midi init")
     interf,name,inp,outp,opened = pypm.GetDeviceInfo(0)
     midiin = pypm.Input(0)
-    print "Post midi init"
+    logging.info( "Post midi init")
 
 # make stdin a non-blocking file
 fd = sys.stdin.fileno()
@@ -109,7 +110,7 @@ while True:
         if midi_msg:
             data, counter = midi_msg[0]
             bank, instrument, value, val2 = data
-            print bank,instrument,value
+            logging.info('|',join([bank,instrument,value]))
             #88 18 801c 01e1 0000 0000 01f7 - 000c 0000 4354 5073 0054 01f1 (Example pkg - value from 0-1000)
             payload = None
             if bank == 176 and instrument == 2:
@@ -145,8 +146,7 @@ while True:
             func, val = keymap[line]
             func(atem,val)
         else:
-            print 'Unknown keypress'
-        #print line
+            logging.warn('Unknown keypress')
         # 88 18 801c 01e1 0000 0000 01f7 - 000c 0000 4354 5073 0054 01f1 (Example pkg)
         #payload = pack("!HHHHHH", 0x000c, 0x0000,0x4354, 0x5073, 0x0054, int(line))#value from 0-1000
         #atem.send_pkt(0x88, self.count_in, 0, 0, self.mycount, payload)
