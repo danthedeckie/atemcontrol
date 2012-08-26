@@ -46,16 +46,16 @@ class ATEMController(object):
         self.uid = self.send_hello()
         #self.sock.send(unhexlify("1014439d00000000000000000100000000000000"))
         #800c67a50000000000500000
-        print self.uid
+        logging.info( self.uid )
         self.sock.setblocking(False)
 
     def send_hello(self):
         self.uid   = (((rand(254) + 1) << 8) + rand(254) + 1) & 0x7FFF
         #self.uid = 0x67a5
         data  = pack("!HHHH", 0x0100, 0x0000, 0x0000, 0x0000)
-        print "Data", hexlify(data)
+        logging.info( "Data" + str(hexlify(data)))
         hello = pack("!BBHHHHH", 0x10, 0x14, self.uid, 0, 0, 0x0000, 0) + data
-        print "Hello:", hexlify(hello)
+        logging.info( "Hello:" + str(hexlify(hello)) )
         #101454b200000000000000000100000000000000
 
         self.sock.send(hello)
@@ -102,13 +102,13 @@ class ATEMController(object):
         #print_pkt(*args)
         cmd, ln, self.count_out, unknown1, unknown2, self.count_in, payload = args
         if not ln==12:
-            print ("R")
-            self.print_pkt(*args)
+            logging.info("R")
+            print_pkt(*args)
         if cmd & 0x10:
             # hello response
             #undef, new_self.uid, undef, undef = unpack("!HHHH", payload)
             #self.uid = unpack("!HHHH", payload)[1]
-            print "Helloresp", self.uid, cmd, cmd & 0x10
+            logging.info('|'.join(["Helloresp", self.uid, cmd, cmd & 0x10]) )
             #send_pkt(0x80, self.uid, 0x0, 0, 0x00e9, 0, '')
             self.send_pkt(0x80, 0, 0, 0x0050, 0, '')
             return True
@@ -117,8 +117,8 @@ class ATEMController(object):
             if self.count_in == 0x04 and not self.hello_finished:
                 self.hello_finished = True
                 self.mycount+=1
-                print "Hellofinish"
-            if self.hello_finished:
+                logging.info( "Hellofinish" )
+            if hello_finished:
                 #print "SHF"
                 self.send_pkt(0x80, self.count_in, 0, 0, 0, '')
                 self.send_pkt(0x08, 0, 0, 0, self.mycount, '')
@@ -138,24 +138,24 @@ class ATEMController(object):
     def fade(self, amount): #amount 1-1000
         payload = pack("!HHHHHH", 0x000c, 0x0000,0x4354, 0x5073, 0x0054, amount)#value from 0-1000
         self.send_pkt(0x88, self.count_in, 0, 0, self.mycount, payload)
-        print "SENDFADE"
+        logging.info( "SENDFADE" )
 
-    def top(self, channel):
+    def set_pgm_bus(self, channel):
         payload = unhexlify("000c00004350674900")+chr(channel)+unhexlify("0000")
         self.send_pkt(0x08, self.count_in, 0, 0, self.mycount, payload)
-        print "SENDTPKG"
+        logging.info( "SENDTPKG" )
 
-    def bottom(self, channel):
+    def set_pvw_bus(self, channel):
         payload = unhexlify("000c00004350764900")+chr(channel)+unhexlify("0000")
         #payload = unhexlify("000c00004350764900060000")
         self.send_pkt(0x08, self.count_in, 0, 0, self.mycount, payload)
-        print "SENDBPKG"
+        logging.info( "SENDBPKG" )
 
-    def other_bottom(self):
+    def auto_fade(self):
         payload = unhexlify("000c97024441757400000000")
         #payload = unhexlify("000c00004350764900060000")
-        self.send_pkt(0x08, self.count_in, 0, 0, self.mycount, payload)
-        print "SENDATPKG"
+        atem.send_pkt(0x08, self.count_in, 0, 0, self.mycount, payload)
+        logging.info( "SENDATPKG" )
 
     def close(self):
         self.sock.close()
