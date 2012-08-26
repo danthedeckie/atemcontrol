@@ -26,8 +26,12 @@ import fcntl
 import sys
 import os
 from time import sleep
+import logging
+
 from atem import ATEMController
 from config import *
+from localconfig import *
+
 has_midi = False
 
 try:
