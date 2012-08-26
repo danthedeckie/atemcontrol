@@ -52,11 +52,12 @@ except:
 FADE = ATEMController.fade
 TOP = ATEMController.set_pgm_bus
 BTM = ATEMController.set_pvw_bus
-OTHER = ATEMController.auto_fade
+AUTO = ATEMController.auto_fade
 
 # Keys, functions, arguments:
 
 keymap = {
+    '`': (AUTO, 0),
     '1': (FADE, 0),
     '2': (FADE, 111),
     '3': (FADE, 222),

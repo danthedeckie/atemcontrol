@@ -82,13 +82,14 @@ class ATEMController(object):
         return (cmd, len, self.count_out, unknown1, unknown2, self.count_in, payload)
 
     def print_pkt(self, cmd, len, count_out, unknown1, unknown2, count_in, payload):
-        print ("Cmd:", hex(cmd),
-               "Len:", len,
-               "Uid:", hex(self.uid),
-               "Unkn1:", unknown1,
-               "Unkn2:", unknown2,
-               "Cnti:", hex(self.count_in),
-               "Payload:", hexlify(payload))
+        pass
+        #print ("Cmd:", hex(cmd),
+        #       "Len:", len,
+        #       "Uid:", hex(self.uid),
+        #       "Unkn1:", unknown1,
+        #       "Unkn2:", unknown2,
+        #       "Cnti:", hex(self.count_in),
+        #       "Payload:", hexlify(payload))
 
     def step(self):
         try:
@@ -105,12 +106,12 @@ class ATEMController(object):
         cmd, ln, self.count_out, unknown1, unknown2, self.count_in, payload = args
         if not ln == 12:
             logging.info("R")
-            print_pkt(*args)
+            self.print_pkt(*args)
         if cmd & 0x10:
             # hello response
             #undef, new_self.uid, undef, undef = unpack("!HHHH", payload)
             #self.uid = unpack("!HHHH", payload)[1]
-            logging.info('|'.join(["Helloresp", self.uid, cmd, cmd & 0x10]))
+            logging.info('|'.join([str(x) for x in ["Helloresp", self.uid, cmd, cmd & 0x10]]))
             #send_pkt(0x80, self.uid, 0x0, 0, 0x00e9, 0, '')
             self.send_pkt(0x80, 0, 0, 0x0050, 0, '')
             return True
@@ -152,10 +153,10 @@ class ATEMController(object):
         self.send_pkt(0x08, self.count_in, 0, 0, self.mycount, payload)
         logging.info("SENDBPKG")
 
-    def auto_fade(self):
+    def auto_fade(self, *args):
         payload = unhexlify("000c97024441757400000000")
         #payload = unhexlify("000c00004350764900060000")
-        atem.send_pkt(0x08, self.count_in, 0, 0, self.mycount, payload)
+        self.send_pkt(0x08, self.count_in, 0, 0, self.mycount, payload)
         logging.info("SENDATPKG")
 
     def close(self):
