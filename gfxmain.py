@@ -43,8 +43,8 @@ from gfxconfig import *
 # Functions we want to put on the keyboard
 
 FADE = ATEMController.fade
-TOP = ATEMController.set_pgm_bus
-BTM = ATEMController.set_pvw_bus
+PGM = ATEMController.set_pgm_bus
+PVW = ATEMController.set_pvw_bus
 AUTO = ATEMController.auto_fade
 CUT = ATEMController.cut
 
@@ -65,21 +65,21 @@ keymap = {
     K_9: (FADE, 888),
     K_0: (FADE, 1000),
 
-    K_a: (TOP, 0),
-    K_s: (TOP, 1),
-    K_d: (TOP, 2),
-    K_f: (TOP, 3),
-    K_g: (TOP, 4),
-    K_h: (TOP, 5),
-    K_j: (TOP, 6),
+    K_a: (PGM, 0),
+    K_s: (PGM, 1),
+    K_d: (PGM, 2),
+    K_f: (PGM, 3),
+    K_g: (PGM, 4),
+    K_h: (PGM, 5),
+    K_j: (PGM, 6),
 
-    K_z: (BTM, 0),
-    K_x: (BTM, 1),
-    K_c: (BTM, 2),
-    K_v: (BTM, 3),
-    K_b: (BTM, 4),
-    K_n: (BTM, 5),
-    K_m: (BTM, 6)
+    K_z: (PVW, 0),
+    K_x: (PVW, 1),
+    K_c: (PVW, 2),
+    K_v: (PVW, 3),
+    K_b: (PVW, 4),
+    K_n: (PVW, 5),
+    K_m: (PVW, 6)
 }
 
 #################
@@ -131,19 +131,42 @@ while happy_endless_loop:
 
     # PGM bus:
 
-    def draw_buslist(surf, (initial_x,y), active = 0):
-        currently = -1
-        for x in range(initial_x, initial_x + ((BUTTON_WIDTH + BUTTON_PADDING) * 8), \
+    def draw_button(surf, (x, y), color, text):
+        surf.fill(color,(x, y, BUTTON_HEIGHT, BUTTON_WIDTH))
+        label = writer.render(text, True, BUTTON_TEXT_COLOR)
+        label_rect = label.get_rect()
+        label_rect.center = (x + (BUTTON_WIDTH / 2), y + (BUTTON_HEIGHT / 2))
+        surf.blit(label, label_rect)
+
+
+    def draw_buslist(surf, (left_edge, y), active = 0):
+        currently = -1  # keeping track of currently drawn button.
+                        # messy and imperative. TODO: remove/refactor
+        right_edge = left_edge + ((BUTTON_WIDTH + BUTTON_PADDING) * 8)
+
+        # draw black border around bus
+        surf.fill((0,0,0), (left_edge - BUTTON_PADDING,
+                            y - BUTTON_PADDING,
+                            (BUTTON_WIDTH + BUTTON_PADDING) * 8,
+                            BUTTON_HEIGHT + BUTTON_PADDING + BUTTON_PADDING))
+
+        # draw buttons:
+        for x in range(left_edge, right_edge, \
                 BUTTON_WIDTH + BUTTON_PADDING):
             currently += 1
+            button_type = SOURCE_LIST[currently].get('type', 'default') 
+            button_color = (0, 0, 0)
+
             if currently == active:
-                surf.fill(BUTTON_ACTIVE_COLOR,(x,y,BUTTON_HEIGHT,BUTTON_WIDTH))
+                button_color = BUTTON_TYPE_ACOLORS[button_type]
             else:
-                surf.fill(BUTTON_COLOR,(x,y,BUTTON_HEIGHT,BUTTON_WIDTH))
-            label = writer.render(SOURCE_LIST[currently]['shortname'], True, BUTTON_TEXT_COLOR)
-            label_rect = label.get_rect()
-            label_rect.center = (x + (BUTTON_WIDTH/2), y + (BUTTON_HEIGHT/2))
-            surf.blit(label, label_rect)
+                button_color = BUTTON_TYPE_COLORS[button_type]
+
+            draw_button(surf,
+                        (x, y),
+                        button_color,
+                        SOURCE_LIST[currently]['shortname'])
+
 
     draw_buslist(screen, PGM_BUS, atem.pgm_bus)
     draw_buslist(screen, PVW_BUS, atem.pvw_bus)
