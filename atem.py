@@ -34,6 +34,15 @@ def rand(max):
 
 class ATEMController(object):
 
+    # currently active sources:
+    pgm_bus = 0
+    pvw_bus = 0
+    aux1_bus = 0
+    aux2_bus = 0
+    aux3_bus = 0
+
+    pgm_fade_time = 30  # TODO!
+
     count_in = 0
     count_out = 0
     mycount = 0
@@ -143,12 +152,18 @@ class ATEMController(object):
         logging.info("SENDFADE")
 
     def set_pgm_bus(self, channel):
-        payload = unhexlify("000c00004350674900")+chr(channel)+unhexlify("0000")
+        self.pgm_bus = channel
+        payload = unhexlify("000c00004350674900") \
+                + chr(channel) \
+                + unhexlify("0000")
         self.send_pkt(0x08, self.count_in, 0, 0, self.mycount, payload)
         logging.info("SENDTPKG")
 
     def set_pvw_bus(self, channel):
-        payload = unhexlify("000c00004350764900")+chr(channel)+unhexlify("0000")
+        self.pvw_bus = channel
+        payload = unhexlify("000c00004350764900") \
+                + chr(channel) \
+                + unhexlify("0000")
         #payload = unhexlify("000c00004350764900060000")
         self.send_pkt(0x08, self.count_in, 0, 0, self.mycount, payload)
         logging.info("SENDBPKG")
@@ -157,7 +172,11 @@ class ATEMController(object):
         payload = unhexlify("000c97024441757400000000")
         #payload = unhexlify("000c00004350764900060000")
         self.send_pkt(0x08, self.count_in, 0, 0, self.mycount, payload)
+        self.pgm_bus, self.pvw_bus = self.pvw_bus, self.pgm_bus
         logging.info("SENDATPKG")
+
+    def cut(self, *vargs):
+        self.auto_fade(*vargs)
 
     def close(self):
         self.sock.close()
