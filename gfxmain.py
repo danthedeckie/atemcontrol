@@ -84,6 +84,61 @@ keymap = {
 
 #################
 #
+# Our custom controls:
+#
+#################
+
+
+class PyGameControl(object):
+    """ generic simple 'widget' to draw on screen. Probably
+        shouldn't be used on it's own, but subclassed out. """
+
+    def __init__(self, to_draw_on, position):
+        self.to_draw_on = to_draw_on
+        self.set_position(position)
+
+    def set_position(self, position):
+        self.x, self.y, self.w, self.h = position
+        self.position = position
+        self.l = self.x  # left edge
+        self.t = self.y  # top edge
+        self.r = self.x + self.w  # right edge
+        self.b = self.y + self.h  # bottom edge
+    
+    def draw(self):
+        pygame.draw.rect(self.to_draw_on, (0,0,0), self.position)
+
+    def handle_click(self, x, y, button):
+        pass
+
+    def handle_keypress(self, key):
+        pass
+
+    def register_global_keys(self):
+        return []
+
+
+class PyGameButton(PyGameControl):
+    """ simple button widget """
+
+    def __init__(self, to_draw_on, position, text, color='default'):
+        PyGameControl.__init__(self, to_draw_on, position)
+        self.set_label(text)
+        self.color = BUTTON_TYPE_COLORS[color]
+
+    def set_label(self, text):
+        self.label = pygame_writer.render(text, True, self.color)
+        self.label_rect = self.label.get_rect()
+        self.label_rect.center = (self.x + (self.w / 2), self.y + (self.h / 2))
+
+    def draw(self):
+        self.to_draw_on.fill(self.color, self.position)
+        self.to_draw_on.blit(self.label, self.label_rect)
+
+
+
+#################
+#
 # Initialisation:
 #
 #################
@@ -98,11 +153,15 @@ writer = pygame.font.Font(pygame.font.get_default_font(), SCREEN_TEXT_SIZE)
 atem = ATEMController(HOST, PORT)
 
 
+
+
+    
 #################
 #
 # Main loop:
 #
 #################
+
 
 happy_endless_loop = True
 

@@ -1,0 +1,25 @@
+SCREEN_SIZE = (640,480)
+SCREEN_COLOR = (20,20,20)
+SCREEN_TEXT_COLOR = (255,255,255)
+SCREEN_TEXT_SIZE = 14
+
+
+BUTTON_HEIGHT = 45
+BUTTON_WIDTH = BUTTON_HEIGHT
+BUTTON_PADDING = 2
+BUTTON_TEXT_COLOR = (255, 255, 255)
+
+PGM_BUS = (100, 300)
+PVW_BUS = (100, 300 + BUTTON_HEIGHT + 20)
+
+BUTTON_TYPE_COLORS = {
+        'CAM':(0,0,40),
+        'GFX':(0,40,0),
+        'default':(0,0,0)
+        }
+
+BUTTON_TYPE_ACOLORS = {
+        'CAM':(20,20,200),
+        'GFX':(20,200,20),
+        'default':(200,100,10)
+        }
