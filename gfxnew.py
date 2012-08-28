@@ -91,11 +91,9 @@ keymap = {
 #
 #################
 
-pygame.init()
+screen = oui.init(SCREEN_SIZE)
 
-screen = pygame.display.set_mode(SCREEN_SIZE)
-
-oui.init()
+#screen = pygame.display.set_mode(SCREEN_SIZE)
 
 atem = ATEMController(HOST, PORT)
 
@@ -143,12 +141,13 @@ while happy_endless_loop:
             logging.warn('Unknown keypress')
     elif event.type == MOUSEBUTTONUP:
         mousex, mousey = event.pos
-        oui.do_clickables(mousex, mousey, event.button)
+        screen.click(mousex, mousey, event.button)
 
 
     # draw pygame surfaces:
 
-    screen.fill(SCREEN_COLOR)
+    #screen.surface.fill(SCREEN_COLOR)
+    screen.draw()
 
 
     aux1bus.draw()

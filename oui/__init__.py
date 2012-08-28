@@ -26,7 +26,6 @@ from defaults import *
 #
 #################
 
-clickables = []
 writer = False
 
 #################
@@ -35,7 +34,7 @@ writer = False
 #
 #################
 
-def init():
+def init(size):
     global writer
 
     pygame.init()
@@ -44,18 +43,9 @@ def init():
     writer = pygame.font.Font(pygame.font.get_default_font(),
                               SCREEN_TEXT_SIZE)
 
-#################
-#
-# Stuff you need to call:
-#
-#################
+    real_screen = pygame.display.set_mode(size)
+    return Control(real_screen, (0,0,size[0],size[1]))
 
-def do_clickables(x, y, button):
-    print "X:%i;Y:%i"%(x, y)
-    for (l, t, w, h), control in clickables:
-        if  x > l and x < l + w \
-        and y > t and y > y + h:
-            control.click(x - l, y - t, button)
 
 #################
 #
@@ -92,8 +82,15 @@ class Control(object):
     """ generic simple 'widget' to draw on screen. Probably
         shouldn't be used on it's own, but subclassed out. """
 
+    clickables = []
+    parent = None
+
     def __init__(self, surface, position):
-        self.surface = surface.subsurface(position)
+        if isinstance(surface, pygame.Surface):
+            self.surface = surface.subsurface(position)
+        elif isinstance(surface, Control):
+            self.parent = surface
+            self.surface = surface.surface.subsurface(position)
         self.set_position(position)
 
     def set_position(self, position):
@@ -107,7 +104,17 @@ class Control(object):
         pygame.draw.rect(self.surface, (0,0,0), self.position)
 
     def click(self, x, y, button):
-        self.action()
+        print str(type(self)) + "X:%i;Y:%i"%(x, y)
+        #print str(self.clickables)
+        for (l, t, w, h), control in self.clickables:
+            print str(type(self)) + ':\n  ' + str((l,t,w,h))
+            if  x > l and x < l + w \
+            and y > t and y < y + h:
+                print 'the shoe fits!'
+                control.click(x - l, y - t, button)
+                break
+        else:
+           self.action()
 
     def keypress(self, key):
         self.action()
@@ -126,7 +133,7 @@ class Button(Control):
     def __init__(self, surface, position, text, color='default'):
         Control.__init__(self, surface, position)
 
-        clickables.append((position, self))
+        self.parent.clickables.append((position, self))
 
         self.set_color(color)
         self.highlight, self.lowlight = highlight_lowlight(self.color)
@@ -174,15 +181,17 @@ class Bus(Control):
         self.bgcolor= pygame.Color(*bgcolor)
         self.buttons = []
         self.current_source = 0
+        self.parent.clickables.append((position, self))
         
         button_width = self.w / (len(sources) + 1)
         button_xs = range(button_width, self.w, button_width)
 
         for source, x, num in zip(sources, button_xs, xrange(10)):
-            # TODO: replace '10' magic number with MAX_SOURCES config setting...
+            # TODO: replace '10' magic number with MAX_SOURCES config 
+            #       setting...
             s = source.get('shortname','default')
             t = source.get('type','default')
-            self.buttons.append(Button(self.surface, 
+            self.buttons.append(Button(self, 
                                        (x, 0, button_width, self.h), s, t))
 
             self.action = lambda: self.set_current(num)
@@ -201,9 +210,9 @@ class Bus(Control):
             button.draw()
 
     def set_current(self, source_number, do_action = True):
-        self.button[self.current_source].set_active(False)
+        self.buttons[self.current_source].set_active(False)
         self.current_source = source_number
-        self.button[source_number].set_active()
+        self.buttons[source_number].set_active()
         if do_action:
             self.action()
 
