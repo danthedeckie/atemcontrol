@@ -19,6 +19,7 @@ import logging
 import pygame
 from pygame.locals import *
 from defaults import *
+from itertools import izip, count
 
 #################
 #
@@ -34,6 +35,7 @@ writer = False
 #
 #################
 
+
 def init(size):
     global writer
 
@@ -44,7 +46,7 @@ def init(size):
                               SCREEN_TEXT_SIZE)
 
     real_screen = pygame.display.set_mode(size)
-    return Control(real_screen, (0,0,size[0],size[1]))
+    return Control(real_screen, (0, 0, size[0], size[1]))
 
 
 #################
@@ -57,16 +59,21 @@ def highlight_lowlight(color):
     """ Returns a pair of tinted version of the original color, typically
         for use in drawing something '3D'. """
 
-    (h,s,v,a) = color.hsva
+    h, s, v, a = color.hsva
 
-    highlight = pygame.Color(255,255,255)
-    highlight.hsva = (h, max(0,s-30), min(100,v+20), a)
+    highlight = pygame.Color(255, 255, 255)
+    highlight.hsva = (h, max(0, s - 30), min(100, v + 20), a)
 
     lowlight = pygame.Color(0, 0, 0)
-    lowlight.hsva = (h, min(100,s+20), max(0, v-50), a)
-    
-    # Note: There's probabaly a better/faster way than doing this 
+    lowlight.hsva = (h, min(100, s + 20), max(0, v - 50), a)
+
+    # Note: There's probabaly a better/faster way than doing this
     #       via HSVA. Feel free to change it.
+
+    # TODO: Another idea, possibly better for longer - term / more complex
+    # stuff would be to have a get_color(name, shade=0) type of function,
+    # which either returns the color, or shade thereof, and memoizes / caches
+    # the results, to keep speed up.
 
     return highlight, lowlight
 
@@ -82,10 +89,8 @@ class Control(object):
     """ generic simple 'widget' to draw on screen. Probably
         shouldn't be used on it's own, but subclassed out. """
 
-    clickables = []
-    parent = None
-
     def __init__(self, surface, position):
+        self.clickables = []
         if isinstance(surface, pygame.Surface):
             self.surface = surface.subsurface(position)
         elif isinstance(surface, Control):
@@ -99,22 +104,18 @@ class Control(object):
         self.real_x, self.real_y, self.w, self.h = position
         self.position = (0, 0, self.w, self.h)
         self.x, self.y = (0, 0)
-    
+
     def draw(self):
-        pygame.draw.rect(self.surface, (0,0,0), self.position)
+        pygame.draw.rect(self.surface, (0, 0, 0), self.position)
 
     def click(self, x, y, button):
-        print str(type(self)) + "X:%i;Y:%i"%(x, y)
-        #print str(self.clickables)
         for (l, t, w, h), control in self.clickables:
-            print str(type(self)) + ':\n  ' + str((l,t,w,h))
             if  x > l and x < l + w \
-            and y > t and y < y + h:
-                print 'the shoe fits!'
+                      and y > t and y < t + h:
                 control.click(x - l, y - t, button)
                 break
         else:
-           self.action()
+            self.action()
 
     def keypress(self, key):
         self.action()
@@ -126,13 +127,11 @@ class Control(object):
         return []
 
 
-
 class Button(Control):
     """ simple button widget """
 
     def __init__(self, surface, position, text, color='default'):
         Control.__init__(self, surface, position)
-
         self.parent.clickables.append((position, self))
 
         self.set_color(color)
@@ -155,14 +154,14 @@ class Button(Control):
             self.color = pygame.Color(*(BUTTON_TYPE_COLORS[color]))
 
     def set_active(self, mode=True):
-        self.set_color(self.color, mode)
+        self.set_color(self.color_name, mode)
 
     def draw(self):
         self.surface.fill(self.color, (2, 2, self.w - 2, self.h - 2))
         self.surface.blit(self.label, self.label_rect)
 
         pygame.draw.lines(self.surface, self.highlight, False, (
-            (self.w - 2, 1), 
+            (self.w - 2, 1),
             (2, 1),
             (1, 2),
             (1, self.h)))
@@ -170,46 +169,54 @@ class Button(Control):
         pygame.draw.lines(self.surface, self.lowlight, False, (
             (self.w - 1, 2),
             (self.w - 1, self.h - 2),
-            (self.w - 2, self.h - 1), 
+            (self.w - 2, self.h - 1),
             (2, self.h - 1)))
 
 class Bus(Control):
     """ a set of buttons for drawing a video bus. """
 
-    def __init__(self, surface, position, name, sources, bgcolor=(0,0,0)):
+    def __init__(self, surface, position, name, sources, bgcolor=(0, 0, 0)):
+
         Control.__init__(self, surface, position)
         self.bgcolor= pygame.Color(*bgcolor)
         self.buttons = []
         self.current_source = 0
         self.parent.clickables.append((position, self))
-        
+
         button_width = self.w / (len(sources) + 1)
         button_xs = range(button_width, self.w, button_width)
 
-        for source, x, num in zip(sources, button_xs, xrange(10)):
-            # TODO: replace '10' magic number with MAX_SOURCES config 
+        for num, source, x in izip(count(), sources, button_xs):
+            # TODO: replace '10' magic number with MAX_SOURCES config
             #       setting...
-            s = source.get('shortname','default')
-            t = source.get('type','default')
-            self.buttons.append(Button(self, 
+            s = source.get('shortname', 'default')
+            t = source.get('type', 'default')
+            self.buttons.append(Button(self,
                                        (x, 0, button_width, self.h), s, t))
 
-            self.action = lambda: self.set_current(num)
+            # This is a little obscure. Sorry.
+            def button_action(n):
+                self.set_current(n)
 
-        self.label = writer.render(name, True, (50, 50, 50))  
+            action = lambda n: lambda: button_action(n)
+            # action is a function that returns a function which calls button_action.
+
+            self.buttons[-1].action = action(num)
+
+        self.label = writer.render(name, True, (50, 50, 50))
         # 50, 50, 50 = bus label color TODO - configfile it!
         self.label_rect = self.label.get_rect()
         self.label_rect.center = ((button_width / 2), self.y + (self.h / 2))
 
     def draw(self):
-        
+
         self.surface.fill(self.bgcolor)
         self.surface.blit(self.label, self.label_rect)
 
         for button in self.buttons:
             button.draw()
 
-    def set_current(self, source_number, do_action = True):
+    def set_current(self, source_number, do_action=True):
         self.buttons[self.current_source].set_active(False)
         self.current_source = source_number
         self.buttons[source_number].set_active()
@@ -219,6 +226,3 @@ class Bus(Control):
     def action(self):
         """ this has to be specified... """
         pass
-    
-
-
