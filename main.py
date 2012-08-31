@@ -1,6 +1,6 @@
 #!/usr/bin/python
-# ATEMController Python Project - main basic interface
-# Copyright (C) 2012
+# ATEMController Python Project - main pygame interface
+# Copyright (C) Daniel Fairhead
 #    Frederik M.J. Vestre (ved/for Studentersamfundet i Trondheim)
 #    Daniel Fairhead (OMNIvision) (reorganising/refactoring)
 #    Based on perl code/reverse engineering by Michael Potter.
@@ -18,142 +18,116 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http: //www.gnu.org/licenses/>.
 
-from struct import pack, unpack
-from binascii import hexlify, unhexlify
-import socket
-import random
-import fcntl
-import sys
-import os
-from time import sleep
 import logging
+
+import pygame
+from pygame.locals import *
 
 from atem import ATEMController
 from config import *
 from localconfig import *
 
-has_midi = False
+from gfxconfig import *
+import oui
 
-try:
-    import pypm
-    has_midi = True
-except:
-    pass
+#######################
+#                     #
+#   Initialisation:   #
+#                     #
+#######################
 
-
-##############
-#
-# Keyboard controls:
-#
-##############
-
-# Functions we want to put on the keyboard
-
-FADE = ATEMController.fade
-TOP = ATEMController.set_pgm_bus
-BTM = ATEMController.set_pvw_bus
-AUTO = ATEMController.auto_fade
-
-# Keys, functions, arguments:
-
-keymap = {
-    '`': (AUTO, 0),
-    '1': (FADE, 0),
-    '2': (FADE, 111),
-    '3': (FADE, 222),
-    '4': (FADE, 333),
-    '5': (FADE, 444),
-    '6': (FADE, 555),
-    '7': (FADE, 666),
-    '8': (FADE, 777),
-    '9': (FADE, 888),
-    '0': (FADE, 1000),
-
-    'a': (TOP, 0),
-    's': (TOP, 1),
-    'd': (TOP, 2),
-    'f': (TOP, 3),
-    'g': (TOP, 4),
-    'h': (TOP, 5),
-    'j': (TOP, 6),
-
-    'z': (BTM, 0),
-    'x': (BTM, 1),
-    'c': (BTM, 2),
-    'v': (BTM, 3),
-    'b': (BTM, 4),
-    'n': (BTM, 5),
-    'm': (BTM, 6)
-}
-
-# Midi stuff.
-
-midiin = None
-if has_midi:
-    logging.info("Pre midi init")
-    interf, name, inp, outp, opened = pypm.GetDeviceInfo(0)
-    midiin = pypm.Input(0)
-    logging.info("Post midi init")
-
-# make stdin a non-blocking file
-fd = sys.stdin.fileno()
-fl = fcntl.fcntl(fd, fcntl.F_GETFL)
-fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+screen = oui.init(SCREEN_SIZE)
 
 atem = ATEMController(HOST, PORT)
 
-#################
-#
-# Main loop:
-#
-#################
+aux1bus = oui.Bus(screen, (10, 100, BUS_WIDTH, BUTTON_HEIGHT), 'Aux1', SOURCE_LIST)
+aux2bus = oui.Bus(screen, (10, 160, BUS_WIDTH, BUTTON_HEIGHT), 'Aux2', SOURCE_LIST)
+aux3bus = oui.Bus(screen, (10, 220, BUS_WIDTH, BUTTON_HEIGHT), 'Aux3', SOURCE_LIST)
 
-while True:
-    if midiin:
-        midi_msg = midiin.Read(1)
-        if midi_msg:
-            data, counter = midi_msg[0]
-            bank, instrument, value, val2 = data
-            logging.info('|', join([bank, instrument, value]))
-            # 88 18 801c 01e1 0000 0000 01f7 - 000c 0000 4354 5073 0054 01f1
-            # (Example pkg - value from 0-1000)
-            payload = None
-            if bank == 176 and instrument == 2:
-                #Fader moved
-                sval = value * 7.87
-                if sval < 15:
-                    sval = 0
-                elif sval > 985:
-                    sval = 1000
-                atem.fade(sval)
-            if bank == 176 and value == 127:
-                if instrument > 22 and instrument < 32:
-                    #top pressed
-                    atem.set_pgm_bus(instrument-22)
-                if instrument > 32  and instrument < 42: 
-                    #bottom pressed
-                    atem.set_pvw_bus(instrument-32)
-                if instrument == 45:
-                    #other bottom pressed
-                    atem.auto_fade()
-            continue
+dskbus = oui.Bus(screen, (10, 280, BUS_WIDTH, BUTTON_HEIGHT), 'DSK', SOURCE_LIST)
+
+pgmbus = oui.Bus(screen, (10, 340, BUS_WIDTH, BUTTON_HEIGHT), 'PGM', SOURCE_LIST)
+pvwbus = oui.Bus(screen, (10, 400, BUS_WIDTH, BUTTON_HEIGHT), 'PVW', SOURCE_LIST)
+
+cutbutton = oui.Button(screen, (BUS_WIDTH + 50, 340, BUTTON_WIDTH, BUTTON_HEIGHT), 'CUT')
+autotakebutton = oui.Button(screen, (BUS_WIDTH + 50, 400, BUTTON_WIDTH, BUTTON_HEIGHT), 'FADE')
+
+# by wrapping the actions in lambdas, (or functions) they don't get called until
+# the action is called...
+
+pgmbus.action = lambda: atem.set_pgm_bus(pgmbus.current_source)
+pvwbus.action = lambda: atem.set_pvw_bus(pvwbus.current_source)
+
+def cut():
+    atem.cut()
+    pwv = pgmbus.current_source
+    pgmbus.set_current(pvwbus.current_source, False)
+    pvwbus.set_current(pwv, False)
+
+cutbutton.action = cut
+autotakebutton.action = cut
+
+######################
+#                    #
+# Keyboard controls: #
+#                    #
+######################
+
+keymap = {}
+
+keymap.update(pgmbus.set_keys([K_a, K_s, K_d, K_f, K_g, K_h, K_j]))
+
+keymap.update(pvwbus.set_keys([K_z, K_x, K_c, K_v, K_b, K_n, K_m]))
+
+keymap[K_RETURN] = autotakebutton.action
+keymap[K_SPACE] = cutbutton.action
+
+######################
+#                    #
+#     Main loop:     #
+#                    #
+######################
+
+happy_endless_loop = True
+
+while happy_endless_loop:
     atem.step()
 
-    #Read from command line
+    # pygame stuff:
 
-    line = None
-    try:
-        line = sys.stdin.readline().strip()
-    except:
-        pass
-    if line: #Send mixer info
-        if line in keymap:
-            func, val = keymap[line]
-            func(atem, val)
+    event = pygame.event.poll()
+
+    if event.type == pygame.QUIT:
+        happy_endless_loop = False
+    elif event.type == KEYDOWN:
+        if event.key in keymap:
+            func = keymap[event.key]
+            #func(atem, val)
+            func()
+        elif event.key == K_ESCAPE:
+            pygame.event.post(pygame.event.Event(QUIT))
         else:
             logging.warn('Unknown keypress')
-        # 88 18 801c 01e1 0000 0000 01f7 - 000c 0000 4354 5073 0054 01f1 (Example pkg)
-        #payload = pack("!HHHHHH", 0x000c, 0x0000, 0x4354, 0x5073, 0x0054, int(line))#value from 0-1000
-        #atem.send_pkt(0x88, self.count_in, 0, 0, self.mycount, payload)
+    elif event.type == MOUSEBUTTONUP:
+        mousex, mousey = event.pos
+        screen.click(mousex, mousey, event.button)
+
+    # draw pygame surfaces:
+    # TODO: this would be better if the controls register themselves
+    #       (with their parents) and get drawn that way. (so we can
+    #       hide whole groups of controls/tabs.  Also keymapping stuff.
+
+    screen.draw()
+
+    aux1bus.draw()
+    aux2bus.draw()
+    aux3bus.draw()
+    dskbus.draw()
+    pgmbus.draw()
+    pvwbus.draw()
+    cutbutton.draw()
+    autotakebutton.draw()
+
+    pygame.display.flip()
 
 atem.close()
