@@ -101,17 +101,19 @@ class ATEMController(object):
         #       "Payload:", hexlify(payload))
 
     def step(self):
-        try:
-            data = self.sock.recv(1024*10)
-        except socket.error:
-            sleep(0.02)
-            return True
-        if not data:
-            print "Nodat"
-            return False
-        #print "Recv: ", hexlify(data[0: 16])
+        while True:
+            try:
+                data = self.sock.recv(1024*10)
+            except socket.error:
+                # This seems to happen when there is no data.
+                # odd (to me) that it's an error. TODO: understand....
+                break
+            if not data:
+                break
+            self.handle_data(data)
+
+    def handle_data(self, data):
         args = self.recv_pkt(data)
-        #print_pkt(*args)
         cmd, ln, self.count_out, unknown1, unknown2, self.count_in, payload = args
         if not ln == 12:
             logging.info("R")
@@ -144,7 +146,6 @@ class ATEMController(object):
             cmd = 0x80
 
     # Higher level functions:
-    # TODO: figure out proper names.
 
     def fade(self, amount): #amount 1-1000
         payload = pack("!HHHHHH", 0x000c, 0x0000, 0x4354, 0x5073, 0x0054, amount)#value from 0-1000
