@@ -81,24 +81,23 @@ class ATEMController(object):
         #    print_pkt(cmd, ln, self.uid, cout, un1, un2, cin, payload)
         self.sock.send(pkt)
 
-    def recv_pkt(self, data):
-        pkt = data
+    def decode_packet(self, data):
         cmd, len, self.uid, self.count_out, unknown1, unknown2, self.count_in = unpack("!BBHHHHH", data[0: 12])
         payload = data[12:]
         #(port, ipaddr) = self.sockaddr_in($self.sock->peername)
         len = ((cmd & 0x07) << 8) + len
         cmd = cmd & 0xF8
-        return (cmd, len, self.count_out, unknown1, unknown2, self.count_in, payload)
+        return (cmd, len, unknown1, unknown2, payload)
 
-    def print_pkt(self, cmd, len, count_out, unknown1, unknown2, count_in, payload):
+    def print_pkt(self, cmd, len, unknown1, unknown2, payload):
         pass
-        #print ("Cmd:", hex(cmd),
-        #       "Len:", len,
-        #       "Uid:", hex(self.uid),
-        #       "Unkn1:", unknown1,
-        #       "Unkn2:", unknown2,
-        #       "Cnti:", hex(self.count_in),
-        #       "Payload:", hexlify(payload))
+        logging.debug( ''.join([str(x) for x in["Recieved Cmd:", hex(cmd), 
+               "Len:", len,
+               "Uid:", hex(self.uid),
+               #"Unkn1:", unknown1,
+               #"Unkn2:", unknown2,
+               "Count in:", hex(self.count_in),
+               "Payload:", hexlify(payload)]]))
 
     def step(self):
         while True:
@@ -113,16 +112,16 @@ class ATEMController(object):
             self.handle_data(data)
 
     def handle_data(self, data):
-        args = self.recv_pkt(data)
-        cmd, ln, self.count_out, unknown1, unknown2, self.count_in, payload = args
-        if not ln == 12:
+        args = self.decode_packet(data)
+        cmd, length, unknown1, unknown2, payload = args
+        if not length == 12:
             logging.info("R")
             self.print_pkt(*args)
         if cmd & 0x10:
             # hello response
             #undef, new_self.uid, undef, undef = unpack("!HHHH", payload)
             #self.uid = unpack("!HHHH", payload)[1]
-            logging.info('|'.join([str(x) for x in ["Helloresp", self.uid, cmd, cmd & 0x10]]))
+            logging.info('|'.join([str(x) for x in ["Received Hello Response", self.uid, cmd, cmd & 0x10]]))
             #send_pkt(0x80, self.uid, 0x0, 0, 0x00e9, 0, '')
             self.send_pkt(0x80, 0, 0, 0x0050, 0, '')
             return True
@@ -131,7 +130,7 @@ class ATEMController(object):
             if self.count_in == 0x04 and not self.hello_finished:
                 self.hello_finished = True
                 self.mycount += 1
-                logging.info("Hellofinish")
+                logging.info("Received Hello-finish")
             if self.hello_finished:
                 #print "SHF"
                 self.send_pkt(0x80, self.count_in, 0, 0, 0, '')
@@ -141,7 +140,7 @@ class ATEMController(object):
         #   self.send_pkt(0x80, 0, 0, self.mycount, 0, '')
         #   self.mycount+=1
 
-        #Sett standard command number
+        #Set standard command number
         if (self.mycount == 0 and self.hello_finished):
             cmd = 0x80
 
