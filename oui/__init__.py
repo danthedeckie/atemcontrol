@@ -36,16 +36,17 @@ writer = False
 #################
 
 
-def init(size):
+def init(size, initpygame=True):
     global writer
 
-    pygame.init()
-    pygame.font.init()
+    if initpygame:
+        pygame.init()
+        pygame.font.init()
+        real_screen = pygame.display.set_mode(size)
 
     writer = pygame.font.Font(pygame.font.get_default_font(),
                               SCREEN_TEXT_SIZE)
 
-    real_screen = pygame.display.set_mode(size)
     return Control(real_screen, (0, 0, size[0], size[1]))
 
 
@@ -180,6 +181,7 @@ class Bus(Control):
         Control.__init__(self, surface, position)
         self.bgcolor= pygame.Color(*bgcolor)
         self.buttons = []
+        self.keys = {}
         self.current_source = 0
         self.parent.clickables.append((position, self))
 
@@ -198,15 +200,21 @@ class Bus(Control):
             def button_action(n):
                 self.set_current(n)
 
-            action = lambda n: lambda: button_action(n)
+            set_action = lambda n: lambda: button_action(n)
             # action is a function that returns a function which calls button_action.
 
-            self.buttons[-1].action = action(num)
+            self.buttons[-1].action = set_action(num)
 
         self.label = writer.render(name, True, (50, 50, 50))
         # 50, 50, 50 = bus label color TODO - configfile it!
         self.label_rect = self.label.get_rect()
         self.label_rect.center = ((button_width / 2), self.y + (self.h / 2))
+
+    def set_keys(self, keys):
+        for key, button in zip(keys, self.buttons):
+            self.keys[key] = button.action
+
+        return self.keys
 
     def draw(self):
 

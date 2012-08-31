@@ -174,7 +174,7 @@ class ATEMController(object):
         self.send_pkt(0x08, self.count_in, 0, 0, self.mycount, payload)
         self.pgm_bus, self.pvw_bus = self.pvw_bus, self.pgm_bus
         logging.info("SENDATPKG")
-
+    
     def cut(self, *vargs):
         self.auto_fade(*vargs)
 

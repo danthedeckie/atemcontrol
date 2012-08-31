@@ -34,57 +34,6 @@ from localconfig import *
 from gfxconfig import *
 import oui
 
-
-##############
-#
-# Keyboard controls:
-#
-##############
-
-# Functions we want to put on the keyboard
-
-
-FADE = ATEMController.fade
-PGM = ATEMController.set_pgm_bus
-PVW = ATEMController.set_pvw_bus
-AUTO = ATEMController.auto_fade
-CUT = ATEMController.cut
-
-# Keys, functions, arguments:
-
-keymap = {
-    K_RETURN: (AUTO, 0),
-    K_SPACE: (CUT, 0),
-
-    K_1: (FADE, 0),
-    K_2: (FADE, 111),
-    K_3: (FADE, 222),
-    K_4: (FADE, 333),
-    K_5: (FADE, 444),
-    K_6: (FADE, 555),
-    K_7: (FADE, 666),
-    K_8: (FADE, 777),
-    K_9: (FADE, 888),
-    K_0: (FADE, 1000),
-
-    K_a: (PGM, 0),
-    K_s: (PGM, 1),
-    K_d: (PGM, 2),
-    K_f: (PGM, 3),
-    K_g: (PGM, 4),
-    K_h: (PGM, 5),
-    K_j: (PGM, 6),
-
-    K_z: (PVW, 0),
-    K_x: (PVW, 1),
-    K_c: (PVW, 2),
-    K_v: (PVW, 3),
-    K_b: (PVW, 4),
-    K_n: (PVW, 5),
-    K_m: (PVW, 6)
-}
-
-
 #################
 #
 # Initialisation:
@@ -108,10 +57,36 @@ dskbus = oui.Bus(screen, (10, 280, BUS_WIDTH, BUTTON_HEIGHT), 'DSK', SOURCE_LIST
 pgmbus = oui.Bus(screen, (10, 340, BUS_WIDTH, BUTTON_HEIGHT), 'PGM', SOURCE_LIST)
 pvwbus = oui.Bus(screen, (10, 400, BUS_WIDTH, BUTTON_HEIGHT), 'PVW', SOURCE_LIST)
 
+cutbutton = oui.Button(screen, (BUS_WIDTH + 50, 340, BUTTON_WIDTH, BUTTON_HEIGHT), 'CUT')
+autotakebutton = oui.Button(screen, (BUS_WIDTH + 50, 400, BUTTON_WIDTH, BUTTON_HEIGHT), 'FADE')
+
 pgmbus.action = lambda: atem.set_pgm_bus(pgmbus.current_source)
 pvwbus.action = lambda: atem.set_pvw_bus(pvwbus.current_source)
+# FADE = ATEMController.fade
 
+def cut():
+    atem.cut()
+    pwv = pgmbus.current_source
+    pgmbus.set_current(pvwbus.current_source, False)
+    pvwbus.set_current(pwv, False)
 
+cutbutton.action = cut
+autotakebutton.action = cut
+
+##############
+#
+# Keyboard controls:
+#
+##############
+
+keymap = {}
+
+keymap.update(pgmbus.set_keys([K_a, K_s, K_d, K_f, K_g, K_h, K_j]))
+
+keymap.update(pvwbus.set_keys([K_z, K_x, K_c, K_v, K_b, K_n, K_m]))
+
+keymap[K_RETURN] = autotakebutton.action
+keymap[K_SPACE] = cutbutton.action
 
 #################
 #
@@ -133,8 +108,9 @@ while happy_endless_loop:
         happy_endless_loop = False
     elif event.type == KEYDOWN:
         if event.key in keymap:
-            func, val = keymap[event.key]
-            func(atem, val)
+            func = keymap[event.key]
+            #func(atem, val)
+            func()
         elif event.key == K_ESCAPE:
             pygame.event.post(pygame.event.Event(QUIT))
         else:
@@ -156,6 +132,8 @@ while happy_endless_loop:
     dskbus.draw()
     pgmbus.draw()
     pvwbus.draw()
+    cutbutton.draw()
+    autotakebutton.draw()
 
     pygame.display.flip()
 
